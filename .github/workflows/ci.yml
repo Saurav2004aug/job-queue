@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Unit, worker and concurrency tests
+        run: python -m unittest discover -s tests -v
+
+      - name: End-to-end demo
+        run: python -m examples.demo
+
+      - name: CLI smoke test
+        run: |
+          python -m jobqueue --db ci.db enqueue send_email '{"to": "ci@example.com"}'
+          python -m jobqueue --db ci.db worker --tasks examples.tasks --concurrency 2 &
+          sleep 3
+          kill -TERM $!
+          wait $! || true
+          python -m jobqueue --db ci.db stats
+          python -m jobqueue --db ci.db list --status succeeded | grep send_email

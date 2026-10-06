@@ -1,0 +1,1 @@
+# No dependencies: jobqueue uses only the Python standard library (sqlite3, threading).
